@@ -1,6 +1,8 @@
 package software.bevel.networking
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import java.net.Socket
 import java.io.BufferedReader
 import java.io.PrintWriter
@@ -8,7 +10,6 @@ import java.io.InputStreamReader
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Sinks
 import reactor.core.scheduler.Schedulers
-import software.bevel.domain.BevelLogger
 import software.bevel.file_system_domain.web.LocalCommunicationInterface
 
 /**
@@ -27,7 +28,10 @@ const val END_TOKEN = "_!END_"
  *
  * @param port The port number to connect to on localhost.
  */
-class LocalSocket(port: Int): LocalCommunicationInterface {
+class LocalSocket(
+    port: Int,
+    private val logger: Logger = LoggerFactory.getLogger(LocalSocket::class.java)
+): LocalCommunicationInterface {
     private var clientSocket: Socket? = null
     private var out: PrintWriter? = null
     private var `in`: BufferedReader? = null
@@ -59,13 +63,13 @@ class LocalSocket(port: Int): LocalCommunicationInterface {
             clientSocket = Socket("localhost", port)
             out = clientSocket?.getOutputStream()?.let { PrintWriter(it, true) }
             `in` = clientSocket?.getInputStream()?.let { BufferedReader(InputStreamReader(it)) }
-            BevelLogger.logger.info("Connected to server on port $port")
+            logger.info("Connected to server on port $port")
             currentPort = port
             return true
             // Start listening for messages
             //startMessageListener()
         } catch (e: Exception) {
-            BevelLogger.logger.info("Error connecting to server: ${e.message}")
+            logger.info("Error connecting to server: ${e.message}")
             return false
         }
     }
@@ -78,7 +82,7 @@ class LocalSocket(port: Int): LocalCommunicationInterface {
         `in`?.close()
         out?.close()
         clientSocket?.close()
-        BevelLogger.logger.info("Closed connection to server on port $currentPort")
+        logger.info("Closed connection to server on port $currentPort")
     }
 
     /**

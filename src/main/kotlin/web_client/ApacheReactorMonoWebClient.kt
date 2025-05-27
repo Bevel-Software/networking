@@ -7,8 +7,9 @@ import org.apache.hc.client5.http.impl.classic.HttpClientBuilder
 import org.apache.hc.core5.http.ContentType
 import org.apache.hc.core5.http.io.entity.StringEntity
 import org.apache.hc.core5.net.URIBuilder
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import reactor.core.publisher.Mono
-import software.bevel.domain.BevelLogger
 import software.bevel.networking.ReactorMonoResponse
 import java.net.URI
 
@@ -17,7 +18,9 @@ import java.net.URI
  * It provides methods for sending POST and GET requests, both asynchronously (returning [ReactorMonoResponse])
  * and synchronously (blocking and returning a String).
  */
-class ApacheReactorMonoWebClient : ReactorMonoWebClient {
+class ApacheReactorMonoWebClient(
+    private val logger: Logger = LoggerFactory.getLogger(ApacheReactorMonoWebClient::class.java)
+): ReactorMonoWebClient {
     /**
      * Sends an asynchronous POST request to the specified URL using Apache HttpClient.
      * The request body, headers, and URL parameters are configurable.
@@ -55,7 +58,7 @@ class ApacheReactorMonoWebClient : ReactorMonoWebClient {
                         if (response.code == 200) {
                             sink.success(responseBody)
                         } else {
-                            BevelLogger.logger.error("${response.code} $responseBody")
+                            logger.error("${response.code} $responseBody")
                             sink.error(Exception("Failed to get response from $url"))
                         }
                     }
@@ -79,7 +82,7 @@ class ApacheReactorMonoWebClient : ReactorMonoWebClient {
         try {
             return sendPostRequest(url, body, headers, parameters).response.block() ?: ""
         } catch (e: Exception) {
-            BevelLogger.logger.error("[ApacheReactorMonoWebClient] Failed to get response from $url", e)
+            logger.error("[ApacheReactorMonoWebClient] Failed to get response from $url", e)
         }
         return ""
     }
@@ -127,12 +130,12 @@ class ApacheReactorMonoWebClient : ReactorMonoWebClient {
                                 sink.success(content)
                             } catch (e: Exception) {
                                 // If specific parsing fails, attempt to return the whole body or error out
-                                BevelLogger.logger.warn("Failed to parse specific GET response structure from $url, returning raw body or erroring: ${e.message}")
+                                logger.warn("Failed to parse specific GET response structure from $url, returning raw body or erroring: ${e.message}")
                                 // Depending on requirements, could sink.success(responseBody) or sink.error(e)
                                 sink.error(Exception("Failed to parse response from $url: ${e.message}", e))
                             }
                         } else {
-                            BevelLogger.logger.error("${response.code} $responseBody")
+                            logger.error("${response.code} $responseBody")
                             sink.error(Exception("Failed to get response from $url"))
                         }
                     }
@@ -155,7 +158,7 @@ class ApacheReactorMonoWebClient : ReactorMonoWebClient {
         try {
             return sendGetRequest(url, headers, parameters).response.block() ?: ""
         } catch (e: Exception) {
-            BevelLogger.logger.error("[ApacheReactorMonoWebClient] Failed to get response from $url", e)
+            logger.error("[ApacheReactorMonoWebClient] Failed to get response from $url", e)
         }
         return ""
     }

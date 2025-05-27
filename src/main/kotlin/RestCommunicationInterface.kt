@@ -1,8 +1,9 @@
 package software.bevel.networking
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import software.bevel.file_system_domain.BevelFilesPathResolver
-import software.bevel.domain.BevelLogger
 import software.bevel.file_system_domain.services.FileHandler
 import software.bevel.file_system_domain.web.LocalCommunicationInterface
 import software.bevel.file_system_domain.web.Subscribable
@@ -17,7 +18,8 @@ import software.bevel.file_system_domain.web.WebClient
  */
 class RestCommunicationInterface(
     private val webClient: WebClient<*>,
-    private val port: String
+    private val port: String,
+    private val logger: Logger = LoggerFactory.getLogger(RestCommunicationInterface::class.java)
 ): LocalCommunicationInterface {
     /**
      * The base URL for all API requests, constructed as `http://localhost:{port}/api`.
@@ -76,7 +78,7 @@ class RestCommunicationInterface(
                 return false
             return jacksonObjectMapper().readValue(result, Boolean::class.java)
         } catch (e: Exception) {
-            BevelLogger.logger.error("Failed to check connection, most likely connection partner not running")
+            logger.error("Failed to check connection, most likely connection partner not running")
             return false
         }
     }

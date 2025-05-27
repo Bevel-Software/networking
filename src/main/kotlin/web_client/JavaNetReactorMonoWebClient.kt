@@ -1,8 +1,9 @@
 package software.bevel.networking.web_client
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import reactor.core.publisher.Mono
-import software.bevel.domain.BevelLogger
 import software.bevel.networking.ReactorMonoResponse
 import java.net.InetAddress
 import java.net.InetSocketAddress
@@ -20,7 +21,9 @@ import java.time.Duration
  * The client is configured with a default connection timeout and supports proxy configuration
  * via the `HTTPS_PROXY` environment variable.
  */
-class JavaNetReactorMonoWebClient: ReactorMonoWebClient {
+class JavaNetReactorMonoWebClient(
+    private val logger: Logger = LoggerFactory.getLogger(JavaNetReactorMonoWebClient::class.java)
+): ReactorMonoWebClient {
     /**
      * The URI for the HTTPS proxy, derived from the `HTTPS_PROXY` environment variable.
      * If the environment variable is not set, this will be `null`.
@@ -84,7 +87,7 @@ class JavaNetReactorMonoWebClient: ReactorMonoWebClient {
                     if (response.statusCode() == 200) {
                         sink.success(response.body())
                     } else {
-                        BevelLogger.logger.error("${response.statusCode()} ${response.body()}")
+                        logger.error("${response.statusCode()} ${response.body()}")
                         sink.error(Exception("Failed to get response from $url"))
                     }
                 }
@@ -147,7 +150,7 @@ class JavaNetReactorMonoWebClient: ReactorMonoWebClient {
                     if (response.statusCode() == 200) {
                         sink.success(response.body())
                     } else {
-                        BevelLogger.logger.error("${response.statusCode()} ${response.body()}")
+                        logger.error("${response.statusCode()} ${response.body()}")
                         sink.error(Exception("Failed to get response from $url"))
                     }
                 }
