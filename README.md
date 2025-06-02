@@ -1,59 +1,114 @@
 # Networking (Kotlin Library for Bevel)
 
 [![License: MPL 2.0](https://img.shields.io/badge/License-MPL%202.0-brightgreen.svg)](https://opensource.org/licenses/MPL-2.0)
-[![Maven Central](https://img.shields.io/maven-central/v/software.bevel/networking.svg?label=Maven%20Central)](https://search.maven.org/artifact/software.bevel/networking/1.0.0/jar)
+[![Maven Central](https://img.shields.io/maven-central/v/software.bevel/networking.svg?label=Maven%20Central&version=1.1.0)](https://search.maven.org/artifact/software.bevel/networking/1.1.0/jar)
 
-The `networking` library is a Kotlin/JVM component within the Bevel suite of developer tools. It provides client-side networking capabilities, including abstractions for reactive HTTP/REST communication and simple local socket-based inter-process communication. This library is designed to integrate seamlessly with other Bevel components, particularly by implementing communication interfaces defined in the `file-system-domain` library.
+Welcome to the `networking` library, a powerful Kotlin/JVM component designed for the Bevel suite of developer tools! This library equips your applications with versatile client-side networking capabilities. It offers elegant abstractions for reactive HTTP/REST communication and provides a straightforward mechanism for local socket-based inter-process communication (IPC).
 
-## Relationship to `file-system-domain`
+A key design principle of `networking` is its seamless integration with other Bevel components, particularly by implementing communication interfaces defined in the `file-system-domain` library. This ensures a decoupled and modular architecture within the Bevel ecosystem.
 
-The `networking` library builds upon and provides concrete implementations for several communication interfaces defined in the [Bevel `file-system-domain`](https://github.com/Bevel-Software/file-system-domain) library. These include:
+## Why Use This Library? Key Features
 
-*   `software.bevel.file_system_domain.web.LocalCommunicationInterface`: Implemented by `RestCommunicationInterface` and `LocalSocket`.
-*   `software.bevel.file_system_domain.web.WebClient`: Implemented by various reactive web clients in this library (e.g., `ApacheReactorMonoWebClient`, `JavaNetReactorMonoWebClient`).
-*   `software.bevel.file_system_domain.web.WebResponse`: Extended by `ReactorWebResponse` and its variants.
-*   `software.bevel.file_system_domain.web.CommunicationInterfaceCreator`: Implemented by `RestCommunicationInterfaceCreator`.
+*   🚀 **Reactive HTTP Clients**: Build non-blocking, high-performance HTTP clients with `ReactorWebClient` and `ReactorMonoWebClient` interfaces.
+*   🔩 **Multiple HTTP Backends**:
+    *   **`JavaNetReactorMonoWebClient`**: Leverages Java's modern `java.net.http.HttpClient` (Java 11+), automatically supporting system proxy settings (e.g., `HTTPS_PROXY`).
+    *   **`ApacheReactorMonoWebClient`**: Utilizes the robust Apache HttpClient 5 for versatile HTTP communication, including specific parsing for OpenAI-like GET responses.
+*   💬 **Simplified REST Communication**: The `RestCommunicationInterface` makes interacting with local RESTful APIs a breeze, abstracting away the complexities of HTTP calls.
+*   🔗 **Local Socket IPC**: `LocalSocket` offers a simple, framed TCP/IP socket solution for direct messaging between processes on the same machine.
+*   ✨ **Project Reactor Integration**: Fully embraces Project Reactor (`Mono`, `Flux`) for asynchronous and reactive programming paradigms, exposed via `ReactorMonoResponse` and `ReactorFluxResponse`.
+*   🔄 **Effortless JSON Handling**: Uses Jackson for smooth serialization and deserialization of objects, perfect for message payloads.
+*   🧩 **Modular Design**: Integrates cleanly with interfaces from `software.bevel:file-system-domain`, promoting loose coupling.
+*   🌍 **Maven Central Availability**: Easily incorporate into any JVM project using Gradle or Maven.
 
-This design promotes loose coupling and allows other Bevel tools to depend on the `file-system-domain` interfaces while using `networking` as a runtime implementation.
+## The `file-system-domain` Connection
 
-## Key Features
+The `networking` library is not just a standalone utility; it's a crucial implementer of contracts defined in the [Bevel `file-system-domain`](https://github.com/Bevel-Software/file-system-domain) library. This relationship is fundamental to its design:
 
-*   **Reactive HTTP Client Abstractions:** Provides `ReactorWebClient` and `ReactorMonoWebClient` interfaces for building non-blocking, reactive HTTP clients.
-*   **Multiple HTTP Client Backends:**
-    *   `JavaNetReactorMonoWebClient`: Uses Java's built-in `java.net.http.HttpClient` (Java 11+), supporting system proxy settings (e.g., `HTTPS_PROXY`).
-    *   `ApacheReactorMonoWebClient`: Uses Apache HttpClient 5, offering robust HTTP communication capabilities.
-*   **REST Communication Interface:** `RestCommunicationInterface` simplifies interaction with local RESTful APIs, built on top of the `WebClient` abstraction.
-*   **Local Socket Communication:** `LocalSocket` provides a simple, framed TCP/IP socket communication mechanism for local inter-process messaging.
-*   **Project Reactor Integration:** Leverages Project Reactor (`Mono`, `Flux`) for asynchronous and reactive programming patterns via `ReactorMonoResponse` and `ReactorFluxResponse`.
-*   **JSON Serialization:** Utilizes Jackson for serializing and deserializing objects (e.g., for message payloads).
-*   **Clear Dependency Structure:** Built to work with interfaces from `software.bevel:file-system-domain`.
-*   **Maven Central Availability:** Easily integrate into any JVM project.
+*   `networking` provides concrete implementations for interfaces like `software.bevel.file_system_domain.web.LocalCommunicationInterface`, `software.bevel.file_system_domain.web.WebClient`, and `software.bevel.file_system_domain.web.CommunicationInterfaceCreator`.
+*   This allows other Bevel tools (and your applications) to depend on the stable interfaces from `file-system-domain` while `networking` serves as a powerful, interchangeable runtime implementation for actual communication.
 
-## Installation / Getting Started
+You'll need to include `file-system-domain` as a peer dependency when using `networking`.
+
+## Core Concepts & Components
+
+Let's dive into the heart of the `networking` library:
+
+### 1. Communication Interfaces
+
+*   **`LocalCommunicationInterface` (from `file-system-domain`)**: This is the contract for local communication. `networking` provides two main implementations:
+    *   **`RestCommunicationInterface`**:
+        *   Ideal for interacting with local REST APIs (e.g., a sidecar service).
+        *   Uses a `WebClient` (see below) to send HTTP requests to standard endpoints like `/api/command` and `/api/isAlive`.
+        *   Simplifies sending data and checking service availability.
+    *   **`LocalSocket`**:
+        *   Provides direct TCP/IP socket communication on `localhost`.
+        *   Messages are framed using `_!START_` and `_!END_` tokens to ensure message integrity.
+        *   Suitable for simple, low-overhead IPC.
+        *   The `messages: Flux<String>` property is available for observing incoming messages. Note: For typical request-response, use `send()`. This Flux is for potential future enhancements or passive listening.
+
+### 2. WebClient Abstractions
+
+These interfaces and classes form the foundation for HTTP communication:
+
+*   **`ReactorWebClient<T>` (Interface)**: A generic interface for web clients that return a `ReactorWebResponse`.
+*   **`ReactorMonoWebClient` (Interface)**: A specialization of `ReactorWebClient` for responses that are `ReactorMonoResponse<String>`, meaning they wrap a `Mono<String>`.
+*   **Implementations**:
+    *   **`JavaNetReactorMonoWebClient`**:
+        *   Uses Java's built-in `java.net.http.HttpClient` (available since Java 11).
+        *   **Feature**: Automatically respects system-wide proxy configurations (e.g., `HTTPS_PROXY` environment variable).
+        *   A good default choice for modern Java environments.
+    *   **`ApacheReactorMonoWebClient`**:
+        *   Built on the mature Apache HttpClient 5 library.
+        *   **Feature**: Includes specific parsing logic for GET responses structured similarly to OpenAI API outputs (extracting `content` from `response.choices[0].message.content`).
+        *   Offers robust and configurable HTTP communication.
+
+### 3. Reactive Web Responses (`ReactorWebResponse`)
+
+How you handle responses matters in a reactive world:
+
+*   **`ReactorWebResponse<T, PUBLISHER_TYPE>` (Sealed Class)**: The base for responses backed by Project Reactor's `Publisher`.
+*   **`ReactorMonoResponse<T>`**:
+    *   Represents a response expected to yield a single item (or none), wrapped in a `Mono<T>`.
+    *   Implements `Blockable<T>`: `block()` to synchronously get the result.
+    *   Implements `Subscribable<T>`: `subscribe(...)` for asynchronous processing.
+*   **`ReactorFluxResponse<T>`**:
+    *   For responses that stream multiple items, wrapped in a `Flux<T>`.
+    *   Implements `Blockable<List<T>>`: `block()` to synchronously get all items as a list.
+    *   Implements `Subscribable<T>`: `subscribe(...)` to process each item as it arrives.
+
+### 4. Interface Creation
+
+*   **`RestCommunicationInterfaceCreator`**:
+    *   A factory implementing `CommunicationInterfaceCreator` (from `file-system-domain`).
+    *   Useful for scenarios where you need to defer the creation of `RestCommunicationInterface` instances or manage them through a standardized creator pattern.
+
+## Installation
+
+Get up and running with the `networking` library in your JVM project.
 
 ### Prerequisites
 
 *   Java Development Kit (JDK) 17 or higher.
 *   A build tool like Gradle or Maven.
 
-### Adding as a Dependency
+### Adding Dependencies
 
-The library is available on Maven Central. You will also need to include `file-system-domain` as it provides core interfaces used by `networking`.
+The library is available on Maven Central. Remember to also include `file-system-domain` as it provides the core interfaces.
 
 **Gradle (Kotlin DSL - `build.gradle.kts`):**
 ```kotlin
 dependencies {
-    implementation("software.bevel:networking:1.0.0")
-    implementation("software.bevel:file-system-domain:1.0.0") // Required peer dependency
-    // Other dependencies like Jackson, Reactor, SLF4J are transitive
+    implementation("software.bevel:networking:1.1.0")
+    implementation("software.bevel:file-system-domain:1.1.0") // Required peer dependency
+    // Transitive dependencies like Jackson, Reactor, SLF4J, Apache HttpClient are included.
 }
 ```
 
 **Gradle (Groovy DSL - `build.gradle`):**
 ```groovy
 dependencies {
-    implementation 'software.bevel:networking:1.0.0'
-    implementation 'software.bevel:file-system-domain:1.0.0' // Required peer dependency
+    implementation 'software.bevel:networking:1.1.0'
+    implementation 'software.bevel:file-system-domain:1.1.0' // Required peer dependency
 }
 ```
 
@@ -63,216 +118,223 @@ dependencies {
     <dependency>
         <groupId>software.bevel</groupId>
         <artifactId>networking</artifactId>
-        <version>1.0.0</version>
+        <version>1.1.0</version>
     </dependency>
     <dependency>
         <groupId>software.bevel</groupId>
         <artifactId>file-system-domain</artifactId>
-        <version>1.0.0</version> <!-- Required peer dependency -->
+        <version>1.1.0</version> <!-- Required peer dependency -->
     </dependency>
 </dependencies>
 ```
-*(Replace `1.0.0` with the latest version if necessary. Check Maven Central for the latest versions of both libraries.)*
+*(Always check Maven Central for the latest versions of `networking` and `file-system-domain` and update accordingly.)*
 
-## Usage Instructions & API Highlights
+## Quick Start & Usage Examples
 
-### 1. Using `RestCommunicationInterface`
+Let's see the `networking` library in action!
 
-This interface is used to communicate with a local REST API. You'll typically instantiate it with a `WebClient` implementation.
+### Example 1: Communicating with a Local REST API
+
+Use `RestCommunicationInterface` to talk to a service running on `localhost`.
 
 ```kotlin
 import software.bevel.networking.RestCommunicationInterface
 import software.bevel.networking.web_client.JavaNetReactorMonoWebClient // Or ApacheReactorMonoWebClient
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 
 fun main() {
+    // Choose your WebClient implementation
     val webClient = JavaNetReactorMonoWebClient()
-    val servicePort = "8080" // Port of your local REST service
+    val servicePort = "8080" // The port your local REST service listens on
 
-    // Create the REST communication interface
-    val restComms = RestCommunicationInterface(webClient, servicePort)
+    val restApi = RestCommunicationInterface(webClient, servicePort)
 
-    // Check if the service is alive (assuming an /api/isAlive endpoint)
-    if (restComms.isConnected()) {
-        println("Service on port $servicePort is alive.")
+    if (restApi.isConnected()) {
+        println("Successfully connected to service on port $servicePort.")
 
-        // Example: Send a command object (assuming it's serialized to JSON)
-        val commandPayload = mapOf("command" to "myAction", "params" to listOf("arg1", "arg2"))
-        val responseString = restComms.send(commandPayload) // Sends as POST to /api/command
-        println("Response from service: $responseString")
+        // Example: Send a structured command (serialized to JSON)
+        val command = mapOf("action" to "processFile", "filePath" to "/path/to/file.txt")
+        try {
+            val responseJson = restApi.send(command) // POSTs to /api/command
+            println("Service response: $responseJson")
+            // You'd typically deserialize responseJson here
+        } catch (e: Exception) {
+            System.err.println("Error sending command: ${e.message}")
+        }
 
-        // Example: Send a string message without waiting for a detailed response
-        val simpleMessage = "{\"event\":\"ping\"}"
-        restComms.sendWithoutResponse(simpleMessage)
-        println("Sent simple message without expecting detailed response.")
+        // Example: Send a simple string message and don't wait for detailed content
+        restApi.sendWithoutResponse("{\"event\":\"heartbeat\"}")
+        println("Sent heartbeat event.")
 
     } else {
-        println("Service on port $servicePort is not reachable.")
+        println("Could not connect to service on port $servicePort. Is it running?")
     }
 
-    restComms.close() // Currently a no-op for RestCommunicationInterface
+    restApi.close() // For RestCommunicationInterface, this is currently a no-op but good practice.
 }
 ```
 
-### 2. Using `LocalSocket`
+### Example 2: Simple Inter-Process Communication with `LocalSocket`
 
-For simple, framed communication over a local TCP socket. Messages are framed with `_!START_` and `_!END_` tokens.
+For direct, framed messaging between local processes.
 
 ```kotlin
 import software.bevel.networking.LocalSocket
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper // For object serialization
 
 fun main() {
-    val port = 12345 // Port your local server is listening on
+    val targetPort = 12345 // Port your local server process is listening on
 
-    // Connect to the local server
-    val localSocket = LocalSocket(port)
+    // Attempt to connect
+    val socketComm = LocalSocket(targetPort)
 
-    if (localSocket.isConnected()) {
-        println("Connected to local server on port $port.")
+    if (socketComm.isConnected()) {
+        println("Connected to local server via socket on port $targetPort.")
 
-        // Send a string message
-        val response1 = localSocket.send("Hello Server!")
-        println("Server response to string: $response1")
+        // Send a plain string message
+        val response1 = socketComm.send("PING")
+        println("Server replied to PING: '$response1'")
 
-        // Send an object (serialized to JSON)
-        val dataObject = mapOf("id" to 1, "value" to "test data")
-        val response2 = localSocket.send(dataObject)
-        println("Server response to object: $response2")
+        // Send an object (will be JSON serialized)
+        val dataObject = mapOf("id" to 101, "payload" to "important data")
+        val response2 = socketComm.send(dataObject)
+        println("Server replied to object: '$response2'")
+        // You might deserialize response2 if it's JSON
 
-        // Send a message without expecting a response
-        localSocket.sendWithoutResponse("Notification: process started.")
-        println("Sent notification.")
+        // Send a fire-and-forget message
+        socketComm.sendWithoutResponse("System update: Process A started.")
+        println("Sent a notification message.")
 
-        // Close the connection
-        localSocket.close()
+        // Important: Close the connection when done
+        socketComm.close()
         println("Socket connection closed.")
 
     } else {
-        println("Failed to connect to local server on port $port.")
+        println("Failed to establish socket connection on port $targetPort.")
     }
 }
 ```
 
-### 3. Using `ReactorWebResponse` (via Web Clients)
+### Example 3: Making Asynchronous HTTP Requests
 
-The `WebClient` implementations return `ReactorMonoResponse<String>`, which wraps a Project Reactor `Mono<String>`.
+Directly use a `WebClient` like `JavaNetReactorMonoWebClient` for fine-grained control.
 
 ```kotlin
 import software.bevel.networking.web_client.JavaNetReactorMonoWebClient
-import software.bevel.networking.ReactorMonoResponse
+import software.bevel.networking.ReactorMonoResponse // To work with the response type
 
 fun main() {
     val webClient = JavaNetReactorMonoWebClient()
-    val targetUrl = "http://localhost:8080/api/data" // Example endpoint
+    val apiUrl = "http://localhost:8080/api/resource" // Your target endpoint
 
     // Asynchronous POST request
-    val postResponseMono: ReactorMonoResponse<String> = webClient.sendPostRequest(
-        url = targetUrl,
-        body = "{\"key\":\"value\"}"
+    val postPayload = "{\"name\":\"gizmo\",\"value\":42}"
+    val postResponse: ReactorMonoResponse<String> = webClient.sendPostRequest(
+        url = apiUrl,
+        body = postPayload,
+        headers = listOf("X-Custom-Header" to "MyValue")
     )
 
-    // Option 1: Block to get the result (use with caution in reactive flows)
-    val responseBodyBlocking: String? = postResponseMono.block()
-    println("Blocking POST response: $responseBodyBlocking")
-
-    // Option 2: Subscribe for asynchronous processing
-    postResponseMono.subscribe(
-        { responseBodyAsync -> println("Async POST response: $responseBodyAsync") }, // onNext
-        { error -> System.err.println("Async POST error: ${error.message}") }        // onError
+    println("POST request sent. Subscribing for response...")
+    postResponse.subscribe(
+        { responseBody -> println("Async POST Response Body: $responseBody") }, // onNext
+        { error -> System.err.println("Async POST Error: ${error.message}") },    // onError
+        { println("Async POST Completed.") }                                    // onComplete (Mono only has onNext or onError for value)
     )
 
     // Asynchronous GET request
-    val getResponseMono: ReactorMonoResponse<String> = webClient.sendGetRequest(targetUrl)
-    getResponseMono.subscribe(
-        { data -> println("Async GET response: $data") },
-        { err -> System.err.println("Async GET error: ${err.message}") }
+    val getResponse: ReactorMonoResponse<String> = webClient.sendGetRequest(
+        url = "$apiUrl/123", // Example with a path parameter
+        parameters = listOf("filter" to "active")
     )
 
-    // Allow time for async operations to complete in this simple example
-    Thread.sleep(2000)
+    println("GET request sent. Subscribing for response...")
+    getResponse.subscribe(
+        { data -> println("Async GET Response Data: $data") },
+        { err -> System.err.println("Async GET Error: ${err.message}") }
+    )
+
+    // In a real app, you wouldn't use Thread.sleep.
+    // This is just to keep the main thread alive for demo purposes.
+    println("Waiting for async operations to complete...")
+    Thread.sleep(5000)
+    println("Demo finished.")
 }
 ```
 
-### 4. Using `RestCommunicationInterfaceCreator`
+### Example 4: Deferred Creation with `RestCommunicationInterfaceCreator`
 
-If you need to defer the creation of `RestCommunicationInterface` instances.
+Useful for dependency injection or when setup needs to be delayed.
 
 ```kotlin
 import software.bevel.networking.RestCommunicationInterfaceCreator
-import software.bevel.networking.web_client.JavaNetReactorMonoWebClient
+import software.bevel.networking.web_client.ApacheReactorMonoWebClient
 
 fun main() {
-    val webClient = JavaNetReactorMonoWebClient()
-    val servicePort = "8080"
+    val webClient = ApacheReactorMonoWebClient()
+    val servicePort = "9090"
 
-    val creator = RestCommunicationInterfaceCreator(webClient, servicePort)
-    val restCommsInstance = creator.create()
+    // Create the factory
+    val interfaceCreator = RestCommunicationInterfaceCreator(webClient, servicePort)
 
-    println("Created RestCommunicationInterface. Is connected: ${restCommsInstance.isConnected()}")
-    // Use restCommsInstance as shown in example 1
+    // Create the instance when needed
+    val restComms = interfaceCreator.create()
+
+    println("RestCommunicationInterface created. Is connected: ${restComms.isConnected()}")
+    // Now use 'restComms' as shown in Example 1
+    // ...
+    restComms.close()
 }
 ```
 
-## Core Components
-
-*   **`software.bevel.networking.RestCommunicationInterface`**:
-    *   Implements `LocalCommunicationInterface` for RESTful interactions, typically with a locally running service.
-    *   Uses a provided `WebClient` for HTTP requests (e.g., to `/api/command`, `/api/isAlive`).
-*   **`software.bevel.networking.LocalSocket`**:
-    *   Implements `LocalCommunicationInterface` for direct TCP socket communication on `localhost`.
-    *   Messages are framed with `START_TOKEN` (`_!START_`) and `END_TOKEN` (`_!END_`).
-    *   Provides a `messages: Flux<String>` for observing incoming messages (though active pushing to this Flux on receipt is a potential future enhancement).
-*   **`software.bevel.networking.web_client` package**:
-    *   **`ReactorWebClient<T>`**: Generic interface for web clients returning `ReactorWebResponse`.
-    *   **`ReactorMonoWebClient`**: Specialization of `ReactorWebClient` for responses of type `ReactorMonoResponse<String>`.
-    *   **`JavaNetReactorMonoWebClient`**: Implementation using Java's `java.net.http.HttpClient`. Supports `HTTPS_PROXY` environment variable.
-    *   **`ApacheReactorMonoWebClient`**: Implementation using Apache HttpClient 5. Includes specific parsing logic for OpenAI-like GET responses.
-*   **`software.bevel.networking.ReactorWebResponse`**:
-    *   Sealed class hierarchy wrapping Project Reactor publishers (`Mono`, `Flux`).
-    *   **`ReactorMonoResponse<T>`**: For single-item responses (wraps `Mono<T>`). Implements `Blockable<T>` and `Subscribable<T>`.
-    *   **`ReactorFluxResponse<T>`**: For multi-item stream responses (wraps `Flux<T>`). Implements `Blockable<List<T>>` and `Subscribable<T>`.
-*   **`software.bevel.networking.RestCommunicationInterfaceCreator`**:
-    *   A factory for creating `RestCommunicationInterface` instances, implementing `CommunicationInterfaceCreator`.
-
-
 ## Building from Source
 
-1.  **Clone the repository:**
+Want to build the library yourself or contribute? Here's how:
+
+1.  **Clone the Repository:**
     ```bash
     git clone https://github.com/Bevel-Software/networking.git
     cd networking
     ```
-2.  **Build the project using Gradle:**
+
+2.  **Build with Gradle:**
+    The Gradle wrapper (`gradlew`) is included.
     ```bash
     ./gradlew build
     ```
-    This will compile the source code, run tests, and build the JAR file (typically found in `build/libs/`).
-3.  **Run tests:**
+    This command compiles the code, runs tests, and creates the JAR file (usually in `build/libs/`).
+
+3.  **Run Tests:**
     ```bash
     ./gradlew test
     ```
 
 ## Contributing
 
-Contributions are welcome! If you'd like to contribute, please follow these general guidelines:
+We welcome contributions! If you're interested in helping improve the `networking` library:
 
-1.  **Report Issues:** If you encounter a bug or have a feature request, please open an issue on the GitHub repository.
-2.  **Fork & Branch:** Fork the repository and create a new branch for your changes.
-3.  **Develop:** Make your changes, adhering to Kotlin coding conventions and ensuring your code is well-formatted.
-4.  **Test:** Add unit tests for new functionality and ensure all tests pass (`./gradlew test`).
-5.  **Pull Request:** Submit a pull request with a clear description of your changes.
+1.  **Found a Bug or Have an Idea?** Open an issue on the GitHub repository. Clear descriptions are greatly appreciated!
+2.  **Ready to Code?**
+    *   Fork the repository.
+    *   Create a new branch for your feature or bug fix (e.g., `feature/new-client` or `fix/socket-timeout`).
+    *   Make your changes. Please adhere to Kotlin coding conventions and ensure your code is well-formatted.
+    *   **Write Tests!** New functionality should be accompanied by unit tests. Ensure all tests pass (`./gradlew test`).
+    *   Commit your changes with clear, concise messages.
+    *   Push your branch to your fork.
+    *   Open a Pull Request against the main repository, detailing your changes.
 
-Please be respectful in all interactions.
+We value respectful and constructive collaboration.
 
 ## License
 
-This project is open source and available under the **Mozilla Public License Version 2.0**. See the [LICENSE](LICENSE) file for the full license text.
+This project is open source and distributed under the **Mozilla Public License Version 2.0**.
+You can find the full license text in the [LICENSE](LICENSE) file.
 
-Dependency license information (generated by the `com.github.jk1.dependency-license-report` plugin) can typically be found in a `NOTICE` file within the build artifacts or project outputs if configured to generate one. Standard dependencies include:
-*   Kotlin Standard Library (Apache License 2.0)
-*   Project Reactor (Apache License 2.0)
-*   Jackson Databind, Module Kotlin, Dataformat YAML (Apache License 2.0)
-*   Apache HttpClient5 (Apache License 2.0)
-*   SLF4J API (MIT License)
-*   JUnit Jupiter API (Eclipse Public License 2.0)
+Key dependencies and their licenses include:
+*   Kotlin Standard Library: Apache License 2.0
+*   Project Reactor: Apache License 2.0
+*   Jackson (Databind, Module Kotlin, Dataformat YAML): Apache License 2.0
+*   Apache HttpClient 5: Apache License 2.0
+*   SLF4J API: MIT License
+*   JUnit Jupiter API: Eclipse Public License 2.0
+
+For a comprehensive list of dependencies and their licenses, you can refer to the reports generated by the `com.github.jk1.dependency-license-report` Gradle plugin (often found in build outputs).
