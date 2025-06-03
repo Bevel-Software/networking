@@ -47,7 +47,7 @@ repositories {
 
 // Define group and version based on root project or use defaults for standalone
 val projectGroup = "software.bevel"
-val projectVersion = "1.1.0"
+val projectVersion = "1.2.0"
 
 group = projectGroup
 version = projectVersion
